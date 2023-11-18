@@ -1,16 +1,10 @@
 
 mod pieces;
-
-use math::vector::IVec2;
-use pieces::pawn::Pawn;
-//mod math;
-//use math::IVec2;
+mod board;
 
 fn main()
 {
-    let my_pawn = Pawn {
-        piece: pieces::Piece { pos: IVec2 { x: 1, y: 2 } }
-    };
+    let my_board = board::Board::default();
     
-    println!("Hello, world! {}", my_pawn.piece.pos.x);
+    println!("Board \n{}", my_board);
 }
