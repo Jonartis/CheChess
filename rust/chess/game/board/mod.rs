@@ -3,7 +3,8 @@
 const BOARD_WIDTH:usize = 8;
 const BOARD_HEIGTH:usize = 8;
 
-use super::pieces::piece_type::PieceType;
+mod piece_type;
+use piece_type::PieceType;
 use core::fmt;
 
 type RowType = [PieceType; BOARD_WIDTH];
