@@ -6,6 +6,7 @@ const BOARD_HEIGTH:usize = 8;
 mod piece_type;
 use piece_type::PieceType;
 use core::fmt;
+extern crate utils;
 
 type RowType = [PieceType; BOARD_WIDTH];
 
@@ -44,13 +45,19 @@ impl fmt::Display for Board
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result
     {
-        for row in &self.table
+        for (row_idx, row) in self.table.iter().enumerate()
         {
+            write!(f, "{} ", BOARD_HEIGTH - row_idx)?;
             for cell in row
             {
                 write!(f, "{} ", cell)?;
             }
             writeln!(f, "")?;
+        }
+        write!(f, "  ")?;
+        for it in 0..BOARD_WIDTH
+        {
+            write!(f, "{} ", utils::ASCII_LOWER[it])?;
         }
         Ok(())
     }
