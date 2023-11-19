@@ -1,12 +1,9 @@
 
 mod game;
-mod error;
-
-use game::Game;
 
 fn main()
 {
-    let mut game = Game::default();
+    let mut game = game::Game::default();
     
     loop {
 

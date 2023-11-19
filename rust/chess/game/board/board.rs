@@ -3,10 +3,11 @@
 pub const BOARD_WIDTH:usize = 8;
 pub const BOARD_HEIGTH:usize = 8;
 
+use super::error::MovementError;
+
 use super::piece_type::PieceType;
 use super::movement::Location;
 use core::fmt;
-use crate::error;
 
 type RowType = [PieceType; BOARD_WIDTH];
 
@@ -43,7 +44,7 @@ impl Board
         loc.row < BOARD_HEIGTH && loc.col < BOARD_WIDTH
     }
 
-    pub fn try_move(&mut self, from :Location, to :Location) -> Result<(), error::MovementError>
+    pub fn try_move(&mut self, from :Location, to :Location) -> Result<(), MovementError>
     {
         if Board::is_inside(from) 
         {
@@ -57,12 +58,12 @@ impl Board
             }
             else
             {
-                return Err(error::MovementError::DestinationOutOfBounds);
+                return Err(MovementError::DestinationOutOfBounds);
             }
         }
         else 
         {    
-            return Err(error::MovementError::SourceOutOfBounds);
+            return Err(MovementError::SourceOutOfBounds);
         }
         Ok(())
     }

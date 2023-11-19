@@ -1,5 +1,5 @@
 
-use crate::error;
+use super::error::InputError;
 use super::board::BOARD_HEIGTH;
 
 #[derive(Copy, Clone)]
@@ -11,25 +11,25 @@ pub struct Location
 
 impl Location
 {   
-    fn char_to_row(ch : char) -> Result<usize, error::InputError>
+    fn char_to_row(ch : char) -> Result<usize, InputError>
     {
         const RADIX:u32 = 10;//Decimal base
         let row_digit = ch.to_digit(RADIX);
         let row = match row_digit 
         {
             Some(digit) => digit as usize,
-            None => return Err(error::InputError::InvalidInput(std::format!("Row '{ch}' wasn't a digit")))
+            None => return Err(InputError::InvalidInput(std::format!("Row '{ch}' wasn't a digit")))
         };
         if row == 0 || row > BOARD_HEIGTH
         {
-            return Err(error::InputError::InvalidInput(std::format!("Invalid row value '{ch}'")));
+            return Err(InputError::InvalidInput(std::format!("Invalid row value '{ch}'")));
         }
         //Convert from board space to indices
         let row_idx = BOARD_HEIGTH - row;
         Ok(row_idx)
     }
 
-    fn char_to_colum(ch : char) -> Result<usize, error::InputError>
+    fn char_to_colum(ch : char) -> Result<usize, InputError>
     {
         let col: usize = if ch.is_ascii_alphabetic() && ch.is_ascii_lowercase()
         {
@@ -37,7 +37,7 @@ impl Location
         }
         else
         {
-            return Err(error::InputError::InvalidInput(std::format!("Column wasn't a valid character '{ch}'")))
+            return Err(InputError::InvalidInput(std::format!("Column wasn't a valid character '{ch}'")))
         };
         Ok(col)
     }
@@ -45,7 +45,7 @@ impl Location
 
 impl TryFrom<&str> for Location
 {
-    type Error = error::InputError;
+    type Error = InputError;
 
     fn try_from(movement: &str) -> Result<Self, Self::Error>
     {

@@ -1,10 +1,13 @@
 
 use utils::command_parser::CommandParser;
-use crate::error::ChessError;
+
+use super::error;
+use super::error::ChessError;
 
 use super::board::Location;
 use super::board::Board;
 use std::io;
+use std::io::Write;
 
 pub struct Game
 {
@@ -79,7 +82,7 @@ impl Game //Events
 
     fn on_error(&mut self, error: ChessError)
     {
-        println!("Error! {:?}", error);
+        error::print_error(error);
         self.request_help();
     }
 
@@ -123,6 +126,9 @@ impl Game //Helpers
 
     fn request_input() -> String
     {
+        println!();
+        print!("Input Command: "); 
+        let _ = io::stdout().flush();
         let mut user_input = String::new();
         io::stdin()
             .read_line(&mut user_input)
@@ -133,7 +139,8 @@ impl Game //Helpers
 
     fn draw_board(board : &Board)
     {
-        println!("Board \n{}", board);
+        println!();
+        println!("{}", board);
     }
 
 }

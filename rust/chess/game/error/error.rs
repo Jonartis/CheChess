@@ -33,3 +33,8 @@ impl From<InputError> for ChessError
         ChessError::InputError(value)
     }
 }
+
+pub fn print_error(error: ChessError)
+{
+    eprintln!("Error! {:?}", error);
+}
