@@ -1,4 +1,6 @@
 
+pub mod command_parser;
+
 pub const ASCII_LOWER: [char; 26] = [
     'a', 'b', 'c', 'd', 'e', 
     'f', 'g', 'h', 'i', 'j', 

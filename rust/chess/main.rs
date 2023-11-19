@@ -1,5 +1,6 @@
 
 mod game;
+mod error;
 
 use std::io;
 use game::Game;
@@ -16,7 +17,7 @@ fn main()
 
         let command = user_input.trim_end();
 
-        game.process_command(command);
+        game.update(command);
         if game.should_quit()
         {
             break;
