@@ -43,7 +43,7 @@ impl Board
         loc.row < BOARD_HEIGTH && loc.col < BOARD_WIDTH
     }
 
-    pub fn make_move(&mut self, from :Location, to :Location) -> Result<(), error::MovementError>
+    pub fn try_move(&mut self, from :Location, to :Location) -> Result<(), error::MovementError>
     {
         if Board::is_inside(from) 
         {

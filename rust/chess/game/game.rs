@@ -1,9 +1,10 @@
 
 use utils::command_parser::CommandParser;
-use crate::error::InputError;
+use crate::error::ChessError;
 
 use super::board::Location;
 use super::board::Board;
+use std::io;
 
 pub struct Game
 {
@@ -24,9 +25,15 @@ impl Game
         }
     }
 
-    pub fn update(&mut self, cmd : &str)
+    pub fn update(&mut self)
     {
-        self.process_command(cmd);
+        let cmd = Game::request_input();
+
+        match self.process_command(&cmd)
+        {
+            Err(error) => self.on_error(error),
+            _ => ()
+        }
 
         if self.help_requested
         {
@@ -40,27 +47,11 @@ impl Game
     }
 }
 
-impl Game
+impl Game //Events
 {
-    fn process_command(&mut self, cmd : &str)
-    {
-        clearscreen::clear().expect("failed to clear screen");
-
-        let mut cmd_parse = CommandParser::create(cmd, " ");
-        println!("Input: {}", cmd_parse.to_string());
-
-        match cmd_parse.cur()
-        {
-            "db" => {self.on_print_board();},
-            "q" => {self.on_quit();},
-            "mv" => {self.on_move(&mut cmd_parse)},
-            other => {self.on_invalid_command(other)}
-        }
-    }
-
     fn on_print_board(&self)
     {
-        println!("Board \n{}", self.board);
+        Game::draw_board(&self.board);
     }
 
     fn on_quit(&mut self)
@@ -70,46 +61,79 @@ impl Game
     
     fn on_invalid_command(&mut self, cmd : &str)
     {
-        self.request_help(std::format!("Invalid command '{cmd}'"));
+        println!("Invalid command '{cmd}'");
+        self.request_help();
     }
 
-    fn on_move(&mut self, cmd_parse : &mut CommandParser)
+    fn on_move(&mut self, cmd_parse : &mut CommandParser) -> Result<(), ChessError>
     {
-        //We need to make a copy here because otherwise Rust can't guarantee we won't modify the reference
-        //in the operation below that takes a mutable reference
-        let from = match Location::try_from(cmd_parse.next())
-        {
-            Ok(loc) => loc,
-            Err(err) => {self.on_error(err); return;}
-        };
-        let to = match Location::try_from(cmd_parse.next())
-        {
-            Ok(loc) => loc,
-            Err(err) => {self.on_error(err); return;}
-        };
+        let from = Location::try_from(cmd_parse.next())?;
+        let to = Location::try_from(cmd_parse.next())?;
 
-        match self.board.make_move(from, to)
+        self.board.try_move(from, to)?;
+
+        //Draw board after a successfull move
+        Game::draw_board(&self.board);
+        Ok(())
+    }
+
+    fn on_error(&mut self, error: ChessError)
+    {
+        println!("Error! {:?}", error);
+        self.request_help();
+    }
+
+}
+
+impl Game //Helpers
+{
+    fn process_command(&mut self, cmd : &str) -> Result<(), ChessError>
+    {
+        clearscreen::clear().expect("failed to clear screen");
+
+        let mut cmd_parse = CommandParser::create(cmd, " ");
+        println!("Input: {}", cmd_parse.to_string());
+
+        match cmd_parse.cur()
         {
-            Err(error) => println!("Error making move {:?}", error),
-            Ok(_) => self.on_print_board()
+            "db" => self.on_print_board(),
+            "q" => self.on_quit(),
+            "mv" => self.on_move(&mut cmd_parse)?,
+            "h" => self.request_help(),
+            other => {self.on_invalid_command(other)}
         }
+        Ok(())
     }
 
-    fn request_help(&mut self, reason: String)
+    fn request_help(&mut self)
     {
-        println!("Requesting help: {reason}");
         self.help_requested = true;
     }
 
     fn show_help(&mut self)
     {
         self.help_requested = false;
-        println!("TODO: Write instructions");
+        println!();
+        println!("INSTRUCTIONS");
+        println!("db: Draw the board");
+        println!("mv: Move a piece from row,column to row,colum. Ex: mv 1a 3c");
+        println!("h: Show this help");
+        println!("q: Quit game");
     }
 
-    fn on_error(&self, error: InputError)
+    fn request_input() -> String
     {
-        println!("Error! {:?}", error);
+        let mut user_input = String::new();
+        io::stdin()
+            .read_line(&mut user_input)
+            .expect("Failed to read command");
+
+        user_input.trim_end().to_string()
+    }
+
+    fn draw_board(board : &Board)
+    {
+        println!("Board \n{}", board);
     }
 
 }

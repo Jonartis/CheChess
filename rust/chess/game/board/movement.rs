@@ -20,7 +20,7 @@ impl Location
             Some(digit) => digit as usize,
             None => return Err(error::InputError::InvalidInput(std::format!("Row '{ch}' wasn't a digit")))
         };
-        if row == 0
+        if row == 0 || row > BOARD_HEIGTH
         {
             return Err(error::InputError::InvalidInput(std::format!("Invalid row value '{ch}'")));
         }
@@ -51,7 +51,7 @@ impl TryFrom<&str> for Location
     {
         if movement.len() < 2
         {
-            return Err(Self::Error::InvalidInput(std::format!("Length of movement was {}", movement.len())));
+            return Err(Self::Error::InvalidInput(std::format!("Length of movement '{}' was {}", movement, movement.len())));
         }
         let row = Location::char_to_row(movement.chars().nth(0).unwrap())?;
         let col = Location::char_to_colum(movement.chars().nth(1).unwrap())?;
