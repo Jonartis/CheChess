@@ -1,7 +1,6 @@
 
 
-use super::PieceBehaviour;
-use super::LocatedPiece;
+use super::*;
 
 pub struct BishopBehaviour
 {}
@@ -9,9 +8,9 @@ pub struct BishopBehaviour
 
 impl PieceBehaviour for BishopBehaviour
 {
-    fn can_move(&self, _from : LocatedPiece, _to : LocatedPiece) -> bool
+    fn can_move(&self, _from : LocatedPiece, _to : LocatedPiece, _board: &Board) -> Result<bool, MovementError>
     {
-        false
+        Ok(false)
     }
 
     fn board_display(&self) -> &'static str

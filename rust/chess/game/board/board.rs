@@ -116,6 +116,36 @@ impl Board
         }
     }
 
+    pub fn has_piece_straight(&self, start : Location, dest : Location) -> Result<bool, MovementError>
+    {
+        let mut found_piece = false;
+        if start.col == dest.col
+        {
+            let row_range = if start.row > dest.row { dest.row+1..start.row } else { start.row+1..dest.row };
+            for row in row_range
+            {
+                if self.get_piece(Location { row, col: start.col })?.is_some()
+                {
+                    found_piece = true;
+                    break;
+                }
+            }
+        }
+        else
+        {
+            let col_range = if start.col > dest.col { dest.col+1..start.col } else { start.col+1..dest.col };
+            for col in col_range
+            {
+                if self.get_piece(Location { row: start.row, col })?.is_some()
+                {
+                    found_piece = true;
+                    break;
+                }
+            }
+        }
+        Ok(found_piece)
+    }
+
 }
 
 impl fmt::Display for Board

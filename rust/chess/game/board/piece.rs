@@ -58,7 +58,7 @@ impl Piece
         //TODO: the from must be a valid piece always as we are getting selected, can we pass the piece through? (maybe just the owner)
         let from_piece = LocatedPiece { location: from, opt_piece: board.get_piece(from)? };
         let to_piece = LocatedPiece { location: to, opt_piece: board.get_piece(to)? };
-        Ok(self.behaviour.can_move(from_piece, to_piece))
+        Ok(self.behaviour.can_move(from_piece, to_piece, board)?)
     }
 
     pub fn get_owner(&self) -> PieceOwnerType

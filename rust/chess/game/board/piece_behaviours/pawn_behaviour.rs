@@ -1,14 +1,13 @@
 
 
-use super::PieceBehaviour;
-use super::LocatedPiece;
+use super::*;
 
 pub struct PawnBehaviour
 {}
 
 impl PieceBehaviour for PawnBehaviour
 {
-    fn can_move(&self, from : LocatedPiece, to : LocatedPiece) -> bool
+    fn can_move(&self, from : LocatedPiece, to : LocatedPiece, _board : &Board) -> Result<bool, MovementError>
     {
         let mut can_move : bool = false;
 
@@ -25,14 +24,14 @@ impl PieceBehaviour for PawnBehaviour
             else if to.location.col == from.location.col.wrapping_sub(1) || to.location.col == from.location.col.wrapping_add(1)
             {
                 //...and there is an enemy piece to eat
-                match to.opt_piece
+                can_move = match to.opt_piece
                 {
-                    Some(piece) => can_move = piece.get_owner() != from.opt_piece.unwrap().get_owner(),
-                    None => ()
+                    Some(piece) => piece.get_owner() != from.opt_piece.unwrap().get_owner(),
+                    None => false
                 }
             }
         }
-        can_move
+        Ok(can_move)
     }
 
     fn board_display(&self) -> &'static str

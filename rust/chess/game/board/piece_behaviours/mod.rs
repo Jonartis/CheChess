@@ -8,10 +8,12 @@ pub mod rook_behaviour;
 
 use core::fmt;
 use super::movement::LocatedPiece;
+use super::error::MovementError;
+use super::Board;
 
 pub trait PieceBehaviour
 {
-    fn can_move(&self, from : LocatedPiece, to : LocatedPiece) -> bool;
+    fn can_move(&self, from : LocatedPiece, to : LocatedPiece, board: &Board) -> Result<bool, MovementError>;
     fn board_display(&self) -> &'static str;
 }
 
