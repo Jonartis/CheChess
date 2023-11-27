@@ -3,13 +3,15 @@
 pub const BOARD_WIDTH:usize = 8;
 pub const BOARD_HEIGTH:usize = 8;
 
+use crate::game::board::piece::PieceOwnerType;
+
 use super::error::MovementError;
 
-use super::piece_type::PieceType;
+use super::piece::Piece;
 use super::movement::Location;
 use core::fmt;
 
-type RowType = [PieceType; BOARD_WIDTH];
+type RowType = [Option<Piece>; BOARD_WIDTH];
 
 pub struct Board
 {
@@ -18,24 +20,52 @@ pub struct Board
 
 impl Board
 {
+    fn create_main_row(owner : PieceOwnerType) -> RowType
+    {
+        [
+            Some(Piece::make_rook(owner)),
+            Some(Piece::make_knight(owner)),
+            Some(Piece::make_bishop(owner)),
+            Some(Piece::make_queen(owner)),
+            Some(Piece::make_king(owner)),
+            Some(Piece::make_bishop(owner)),
+            Some(Piece::make_knight(owner)),
+            Some(Piece::make_rook(owner))
+        ]
+    }
+
+    fn create_pawn_row(owner : PieceOwnerType) -> RowType
+    {
+        const EMPTY:Option<Piece> = None;
+        const EMPTY_LINE:RowType = [EMPTY;BOARD_WIDTH];
+
+        let mut pawn_row:RowType = EMPTY_LINE;
+        
+        for i in 0..BOARD_WIDTH
+        {
+            pawn_row[i] = Some(Piece::make_pawn(owner))
+        }
+        
+        return pawn_row;
+    }
+
     pub fn default() -> Board
     {
-        const MAIN_LINE:RowType =
-        [PieceType::Rook, PieceType::Knight, PieceType::Bishop, PieceType::Queen, PieceType::King, PieceType::Bishop, PieceType::Knight, PieceType::Rook];
-
-        const PAWN_LINE:RowType = [PieceType::Pawn; BOARD_WIDTH];
-        const EMPTY_LINE:RowType = [PieceType::None; BOARD_WIDTH];
+        const BLACK:PieceOwnerType = PieceOwnerType::Black;
+        const WHITE:PieceOwnerType = PieceOwnerType::White;
+        const EMPTY:Option<Piece> = None;
+        const EMPTY_LINE:RowType = [EMPTY;BOARD_WIDTH];
 
         Board{ 
             table: [
-                MAIN_LINE,
-                PAWN_LINE,
+                Board::create_main_row(BLACK),
+                Board::create_pawn_row(BLACK),
                 EMPTY_LINE,
                 EMPTY_LINE,
                 EMPTY_LINE,
                 EMPTY_LINE,
-                PAWN_LINE,
-                MAIN_LINE]
+                Board::create_pawn_row(WHITE),
+                Board::create_main_row(WHITE)]
         }
     }
 
@@ -50,11 +80,16 @@ impl Board
         {
             if Board::is_inside(to)
             {
-                //TODO: Check ownership of each piece and whoever is moving them
-                //TODO: Check rules of chess for each pieces allowed movement
-                let piece = self.table[from.row][from.col];
-                self.table[to.row][to.col] = piece;
-                self.table[from.row][from.col] = PieceType::None;
+                let opt_piece = self.table[from.row][from.col].as_ref();
+
+                let piece = match opt_piece {
+                    Some(piece) => piece,
+                    None => return Err(MovementError::SourcePieceNotFound)
+                };
+                if piece.can_move(from, to, self)?
+                {
+                    self.table[to.row][to.col] = self.table[from.row][from.col].take();
+                }
             }
             else
             {
@@ -68,6 +103,19 @@ impl Board
         Ok(())
     }
 
+    pub fn get_piece(&self, loc : Location) -> Result<Option<&Piece>, MovementError>
+    {
+        if Board::is_inside(loc) 
+        {
+            let piece = self.table[loc.row][loc.col].as_ref();
+            return Ok(piece);
+        }
+        else 
+        {    
+            return Err(MovementError::SourceOutOfBounds);
+        }
+    }
+
 }
 
 impl fmt::Display for Board
@@ -79,7 +127,11 @@ impl fmt::Display for Board
             write!(f, "{} ", BOARD_HEIGTH - row_idx)?;
             for cell in row
             {
-                write!(f, "{} ", cell)?;
+                match cell {
+                    Some(piece) => write!(f, "{} ", piece)?,
+                    None => write!(f, "* ")?
+                };
+                
             }
             writeln!(f, "")?;
         }

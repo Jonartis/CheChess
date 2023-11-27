@@ -1,12 +1,19 @@
 
 use super::error::InputError;
 use super::board::BOARD_HEIGTH;
+use super::piece::Piece;
 
 #[derive(Copy, Clone)]
 pub struct Location
 {
     pub row: usize,
     pub col: usize
+}
+
+pub struct LocatedPiece<'a>
+{
+    pub location : Location,
+    pub opt_piece : Option<&'a Piece>
 }
 
 impl Location

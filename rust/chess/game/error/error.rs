@@ -4,7 +4,8 @@
 pub enum MovementError
 {
     SourceOutOfBounds,
-    DestinationOutOfBounds,
+    SourcePieceNotFound,
+    DestinationOutOfBounds
 }
 
 #[derive(Debug)]
