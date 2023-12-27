@@ -173,3 +173,30 @@ impl fmt::Display for Board
         Ok(())
     }
 }
+
+
+#[cfg(test)]
+mod tests
+{
+    use crate::game::board::Location;
+
+    use super::Board;
+
+    #[test]
+    fn test_board_tracks_movement()
+    {
+        let mut board = Board::default();
+        let from = Location::try_from("2a").unwrap();
+        let to = Location::try_from("3a").unwrap();
+        let move_result = board.try_move(from, to);
+        assert!(!move_result.is_err(), "Failed to move pawn forward");
+
+        let no_piece = board.get_piece(from);
+        assert!(no_piece.is_ok());
+        assert!(no_piece.unwrap().is_none(), "Found pawn in original location after moving it");
+
+        let pawn_piece = board.get_piece(to);
+        assert!(pawn_piece.is_ok());
+        assert!(pawn_piece.unwrap().is_some(), "Not found pawn in new location after moving it");
+    }
+}
