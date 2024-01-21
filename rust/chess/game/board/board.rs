@@ -177,61 +177,73 @@ mod tests
 
     use super::Board;
 
-    fn multi_move(moves : &[&str],  board: &mut Board)
+    struct BoardTester
     {
-        let iter = moves.windows(2);
-        for pairs in IntoIterator::into_iter(iter)
+        board : Board
+    }
+
+    impl BoardTester
+    {
+        pub fn create() -> Self
         {
-            let from = Location::try_from(pairs[0]).unwrap();
-            let to = Location::try_from(pairs[1]).unwrap();
-            let _ = board.try_move(from, to);
+            Self{board: Board::default()}
+        }
+        
+        pub fn multi_move(&mut self, moves : &[&str])
+        {
+            let iter = moves.windows(2);
+            for pairs in IntoIterator::into_iter(iter)
+            {
+                let _ = self.try_move(pairs[0], pairs[1]);
+            }
+        }
+
+        pub fn try_move(&mut self, from_str: &str, to_str: &str) -> Result<bool, super::MovementError>
+        {
+            let from = Location::try_from(from_str).unwrap();
+            let to = Location::try_from(to_str).unwrap();
+            self.board.try_move(from, to)
+        }
+
+        pub fn has_piece(&self, from_str: &str) -> bool
+        {
+            let from = Location::try_from(from_str).unwrap();
+            self.board.get_piece(from.try_into().unwrap()).is_some()
         }
     }
 
     #[test]
     fn board_tracks_movement()
     {
-        let mut board = Board::default();
-        let from = Location::try_from("2a").unwrap();
-        let to = Location::try_from("3a").unwrap();
+        let mut board = BoardTester::create();
+        let from = "2a";
+        let to = "3a";
         let move_result = board.try_move(from, to);
         assert!(move_result.is_ok_and(|moved| moved), "Failed to move pawn forward");
-
-        let no_piece = board.get_piece(from.try_into().unwrap());
-        assert!(no_piece.is_none(), "Found pawn in original location after moving it");
-
-        let pawn_piece = board.get_piece(to.try_into().unwrap());
-        assert!(pawn_piece.is_some(), "Not found pawn in new location after moving it");
+        assert!(!board.has_piece(from), "Found pawn in original location after moving it");
+        assert!(board.has_piece(to), "Not found pawn in new location after moving it");
     }
 
     #[test]
     fn pawn_movement()
     {
-        let mut board = Board::default();
+        let mut board = BoardTester::create();
         {
-            let from = Location::try_from("2a").unwrap();
-            let to = Location::try_from("3a").unwrap();
-            let move_result = board.try_move(from, to);
+            let move_result = board.try_move("2a", "3a");
             assert!(move_result.is_ok_and(|moved| moved), "Failed to move pawn forward");
         }
         {
-            let from = Location::try_from("3a").unwrap();
-            let to = Location::try_from("5a").unwrap();
-            let move_result = board.try_move(from, to);
+            let move_result = board.try_move("3a", "5a");
             assert!(move_result.is_ok_and(|moved| !moved), "We should only be able to move one step at a time");
         }
         {
-            let from = Location::try_from("3a").unwrap();
-            let to = Location::try_from("4b").unwrap();
-            let move_result = board.try_move(from, to);
+            let move_result = board.try_move("3a", "4b");
             assert!(move_result.is_ok_and(|moved| !moved), "We should have failed to move diagonally as there is no piece in the diagonal");
         }
         {
             //Move the pawn to a position where it can eat diagonally
-            multi_move(&["3a","4a","5a","6a"], &mut board);
-            let from = Location::try_from("6a").unwrap();
-            let to = Location::try_from("7b").unwrap();
-            let move_result = board.try_move(from, to);
+            board.multi_move(&["3a","4a","5a","6a"]);
+            let move_result = board.try_move("6a", "7b");
             assert!(move_result.is_ok_and(|moved| moved), "We should be able to move diagonally if there is an enemy piece on the way");
         }
     }
@@ -239,46 +251,58 @@ mod tests
     #[test]
     fn rook_movement()
     {
-        let mut board = Board::default();
+        let mut board = BoardTester::create();
         //Open the way to the left rook!
-        multi_move(&["2a","3a","4a","5a"], &mut board);
+        board.multi_move(&["2a","3a","4a","5a"]);
         {
-            let from = Location::try_from("1a").unwrap();
-            let to = Location::try_from("2a").unwrap();
-            let move_result = board.try_move(from, to);
+            let move_result = board.try_move("1a", "2a");
             assert!(move_result.is_ok_and(|moved| moved), "Failed to move rook forward");
         }
         {
-            let from = Location::try_from("2a").unwrap();
-            let to = Location::try_from("1a").unwrap();
-            let move_result = board.try_move(from, to);
+            let move_result = board.try_move("2a", "1a");
             assert!(move_result.is_ok_and(|moved| moved), "Failed to move rook backwards");
         }
         {
-            let from = Location::try_from("1a").unwrap();
-            let to = Location::try_from("3a").unwrap();
-            let move_result = board.try_move(from, to);
+            let move_result = board.try_move("1a", "3a");
             assert!(move_result.is_ok_and(|moved| moved), "Failed to move rook forward multiple steps");
         }
         {
-            let from = Location::try_from("3a").unwrap();
-            let to = Location::try_from("3f").unwrap();
-            let move_result = board.try_move(from, to);
+            let move_result = board.try_move("3a", "3f");
             assert!(move_result.is_ok_and(|moved| moved), "Failed to move rook sidewards multiple steps");
         }
         {
-            let from = Location::try_from("3f").unwrap();
-            let to = Location::try_from("7f").unwrap();
-            let move_result = board.try_move(from, to);
+            let move_result = board.try_move("3f", "7f");
             assert!(move_result.is_ok_and(|moved| moved), "Failed to move consume enemy piece with rook");
         }
         {
-            let from = Location::try_from("7f").unwrap();
-            let to = Location::try_from("2f").unwrap();
-            let move_result = board.try_move(from, to);
+            let move_result = board.try_move("7f", "2f");
             assert!(move_result.is_ok_and(|moved| !moved), "We shouldn't be able to eat our own pieces");
         }
 
     }
 
+    #[ignore] //Ignored until bishop behaviour is implemented
+    #[test]
+    fn bishop_movement()
+    {
+        let mut board = BoardTester::create();
+        //Open the way to the left bishop!
+        board.multi_move(&["2d","3d","4d","5d"]);
+        {
+            let move_result = board.try_move("1c", "2d");
+            assert!(move_result.is_ok_and(|moved| moved), "Failed to move bishop in diagonal");
+        }
+        {
+            let move_result = board.try_move("2d", "4b");
+            assert!(move_result.is_ok_and(|moved| moved), "Failed to move bishop in diagonal multiple steps");
+        }
+        {
+            let move_result = board.try_move("4b", "7e");
+            assert!(move_result.is_ok_and(|moved| moved), "Failed to eat an enemy piece");
+        }
+        {
+            let move_result = board.try_move("4b", "7e");
+            assert!(move_result.is_ok_and(|moved| moved), "Failed to eat an enemy piece");
+        }
+    }
 }
