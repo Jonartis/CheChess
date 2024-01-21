@@ -67,7 +67,7 @@ impl Board
         }
     }
 
-    pub fn try_move(&mut self, from: Location, to: Location) -> Result<(), MovementError>
+    pub fn try_move(&mut self, from: Location, to: Location) -> Result<bool, MovementError>
     {
         let board_from: BoardLocation = match from.try_into() {
             Ok(new_loc) => new_loc,
@@ -86,11 +86,12 @@ impl Board
             None => return Err(MovementError::SourcePieceNotFound)
         };
 
-        if piece.can_move(from, to, self)?
+        let can_move = piece.can_move(from, to, self)?;
+        if can_move
         {
             self.table[board_to.get_row()][board_to.get_col()] = self.table[board_from.get_row()][board_from.get_col()].take();
         }
-        Ok(())
+        Ok(can_move)
     }
 
     pub fn get_piece(&self, loc : BoardLocation) -> Option<&Piece>
@@ -172,12 +173,23 @@ impl fmt::Display for Board
 #[cfg(test)]
 mod tests
 {
-    use crate::game::board::{Location};
+    use crate::game::board::Location;
 
     use super::Board;
 
+    fn multi_move(moves : Vec<&str>,  board: &mut Board)
+    {
+        let iter = moves.windows(2);
+        for pairs in IntoIterator::into_iter(iter)
+        {
+            let from = Location::try_from(pairs[0]).unwrap();
+            let to = Location::try_from(pairs[1]).unwrap();
+            let _ = board.try_move(from, to);
+        }
+    }
+
     #[test]
-    fn test_board_tracks_movement()
+    fn board_tracks_movement()
     {
         let mut board = Board::default();
         let from = Location::try_from("2a").unwrap();
@@ -190,5 +202,37 @@ mod tests
 
         let pawn_piece = board.get_piece(to.try_into().unwrap());
         assert!(pawn_piece.is_some(), "Not found pawn in new location after moving it");
+    }
+
+    #[test]
+    fn pawn_forward_movement()
+    {
+        let mut board = Board::default();
+        {
+            let from = Location::try_from("2a").unwrap();
+            let to = Location::try_from("3a").unwrap();
+            let move_result = board.try_move(from, to);
+            assert!(!move_result.is_err(), "Failed to move pawn forward");
+        }
+        {
+            let from = Location::try_from("3a").unwrap();
+            let to = Location::try_from("5a").unwrap();
+            let move_result = board.try_move(from, to);
+            assert!(move_result.is_ok_and(|moved| !moved), "We should only be able to move one step at a time");
+        }
+        {
+            let from = Location::try_from("3a").unwrap();
+            let to = Location::try_from("4b").unwrap();
+            let move_result = board.try_move(from, to);
+            assert!(move_result.is_ok_and(|moved| !moved), "We should have failed to move diagonally as there is no piece in the diagonal");
+        }
+        {
+            //Move the pawn to a position where it can eat diagonally
+            multi_move(["3a","4a","5a","6a"].to_vec(), &mut board);
+            let from = Location::try_from("6a").unwrap();
+            let to = Location::try_from("7b").unwrap();
+            let move_result = board.try_move(from, to);
+            assert!(move_result.is_ok_and(|moved| moved), "We should be able to move diagonally if there is an enemy piece on the way");
+        }
     }
 }
