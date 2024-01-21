@@ -1,21 +1,19 @@
 
 //Always 8x8
-pub const BOARD_WIDTH:usize = 8;
-pub const BOARD_HEIGTH:usize = 8;
-
-use crate::game::board::piece::PieceOwnerType;
+pub const BOARD_SIZE:i32 = 8;
+pub const BOARD_SIZE_US:usize = BOARD_SIZE as usize;
 
 use super::error::MovementError;
-
+use super::movement::*;
 use super::piece::Piece;
-use super::movement::Location;
+use super::piece::PieceOwnerType;
 use core::fmt;
 
-type RowType = [Option<Piece>; BOARD_WIDTH];
+type RowType = [Option<Piece>; BOARD_SIZE_US];
 
 pub struct Board
 {
-    table : [RowType; BOARD_HEIGTH] //2D array
+    table : [RowType; BOARD_SIZE_US] //2D array
 }
 
 impl Board
@@ -37,11 +35,11 @@ impl Board
     fn create_pawn_row(owner : PieceOwnerType) -> RowType
     {
         const EMPTY:Option<Piece> = None;
-        const EMPTY_LINE:RowType = [EMPTY;BOARD_WIDTH];
+        const EMPTY_LINE:RowType = [EMPTY;BOARD_SIZE_US];
 
         let mut pawn_row:RowType = EMPTY_LINE;
         
-        for i in 0..BOARD_WIDTH
+        for i in 0..BOARD_SIZE_US
         {
             pawn_row[i] = Some(Piece::make_pawn(owner))
         }
@@ -54,7 +52,7 @@ impl Board
         const BLACK:PieceOwnerType = PieceOwnerType::Black;
         const WHITE:PieceOwnerType = PieceOwnerType::White;
         const EMPTY:Option<Piece> = None;
-        const EMPTY_LINE:RowType = [EMPTY;BOARD_WIDTH];
+        const EMPTY_LINE:RowType = [EMPTY;BOARD_SIZE_US];
 
         Board{ 
             table: [
@@ -69,62 +67,57 @@ impl Board
         }
     }
 
-    pub fn is_inside(loc :Location) -> bool
+    pub fn try_move(&mut self, from: Location, to: Location) -> Result<(), MovementError>
     {
-        loc.row < BOARD_HEIGTH && loc.col < BOARD_WIDTH
-    }
+        let board_from: BoardLocation = match from.try_into() {
+            Ok(new_loc) => new_loc,
+            Err(_) => { return Err(MovementError::SourceOutOfBounds); }
+        };
+        
+        let board_to: BoardLocation = match to.try_into() {
+            Ok(new_loc) => new_loc,
+            Err(_) => { return Err(MovementError::DestinationOutOfBounds); }
+        };
+        
+        let opt_piece = self.table[board_from.get_row()][board_from.get_col()].as_ref();
 
-    pub fn try_move(&mut self, from :Location, to :Location) -> Result<(), MovementError>
-    {
-        if Board::is_inside(from) 
+        let piece = match opt_piece {
+            Some(piece) => piece,
+            None => return Err(MovementError::SourcePieceNotFound)
+        };
+
+        if piece.can_move(from, to, self)?
         {
-            if Board::is_inside(to)
-            {
-                let opt_piece = self.table[from.row][from.col].as_ref();
-
-                let piece = match opt_piece {
-                    Some(piece) => piece,
-                    None => return Err(MovementError::SourcePieceNotFound)
-                };
-                if piece.can_move(from, to, self)?
-                {
-                    self.table[to.row][to.col] = self.table[from.row][from.col].take();
-                }
-            }
-            else
-            {
-                return Err(MovementError::DestinationOutOfBounds);
-            }
-        }
-        else 
-        {    
-            return Err(MovementError::SourceOutOfBounds);
+            self.table[board_to.get_row()][board_to.get_col()] = self.table[board_from.get_row()][board_from.get_col()].take();
         }
         Ok(())
     }
 
-    pub fn get_piece(&self, loc : Location) -> Result<Option<&Piece>, MovementError>
+    pub fn get_piece(&self, loc : BoardLocation) -> Option<&Piece>
     {
-        if Board::is_inside(loc) 
-        {
-            let piece = self.table[loc.row][loc.col].as_ref();
-            return Ok(piece);
-        }
-        else 
-        {    
-            return Err(MovementError::SourceOutOfBounds);
-        }
+        self.table[loc.get_row()][loc.get_col()].as_ref()
     }
 
-    pub fn has_piece_straight(&self, start : Location, dest : Location) -> Result<bool, MovementError>
+    pub fn has_piece_straight(&self, in_from : Location, in_to : Location) -> Result<bool, MovementError>
     {
+        let start: BoardLocation = match in_from.try_into() {
+            Ok(new_loc) => new_loc,
+            Err(_) => { return Err(MovementError::SourceOutOfBounds); }
+        };
+        
+        let dest: BoardLocation = match in_to.try_into() {
+            Ok(new_loc) => new_loc,
+            Err(_) => { return Err(MovementError::DestinationOutOfBounds); }
+        };
+
         let mut found_piece = false;
-        if start.col == dest.col
+        if start.get_col() == dest.get_col()
         {
-            let row_range = if start.row > dest.row { dest.row+1..start.row } else { start.row+1..dest.row };
+            let row_range = if start.get_row() > dest.get_row() { dest.get_row()+1..start.get_row() } else { start.get_row()+1..dest.get_row() };
             for row in row_range
             {
-                if self.get_piece(Location { row, col: start.col })?.is_some()
+                let test_loc = BoardLocation::try_create(row, start.get_col()).unwrap();
+                if self.get_piece(test_loc).is_some()
                 {
                     found_piece = true;
                     break;
@@ -133,10 +126,11 @@ impl Board
         }
         else
         {
-            let col_range = if start.col > dest.col { dest.col+1..start.col } else { start.col+1..dest.col };
+            let col_range = if start.get_col() > dest.get_col() { dest.get_col()+1..start.get_col() } else { start.get_col()+1..dest.get_col() };
             for col in col_range
             {
-                if self.get_piece(Location { row: start.row, col })?.is_some()
+                let test_loc = BoardLocation::try_create(start.get_row(), col).unwrap();
+                if self.get_piece(test_loc).is_some()
                 {
                     found_piece = true;
                     break;
@@ -154,7 +148,7 @@ impl fmt::Display for Board
     {
         for (row_idx, row) in self.table.iter().enumerate()
         {
-            write!(f, "{} ", BOARD_HEIGTH - row_idx)?;
+            write!(f, "{} ", BOARD_SIZE_US - row_idx)?;
             for cell in row
             {
                 match cell {
@@ -166,7 +160,7 @@ impl fmt::Display for Board
             writeln!(f, "")?;
         }
         write!(f, "  ")?;
-        for it in 0..BOARD_WIDTH
+        for it in 0..BOARD_SIZE_US
         {
             write!(f, "{} ", utils::ASCII_LOWER[it])?;
         }
@@ -178,7 +172,7 @@ impl fmt::Display for Board
 #[cfg(test)]
 mod tests
 {
-    use crate::game::board::Location;
+    use crate::game::board::{Location};
 
     use super::Board;
 
@@ -191,12 +185,10 @@ mod tests
         let move_result = board.try_move(from, to);
         assert!(!move_result.is_err(), "Failed to move pawn forward");
 
-        let no_piece = board.get_piece(from);
-        assert!(no_piece.is_ok());
-        assert!(no_piece.unwrap().is_none(), "Found pawn in original location after moving it");
+        let no_piece = board.get_piece(from.try_into().unwrap());
+        assert!(no_piece.is_none(), "Found pawn in original location after moving it");
 
-        let pawn_piece = board.get_piece(to);
-        assert!(pawn_piece.is_ok());
-        assert!(pawn_piece.unwrap().is_some(), "Not found pawn in new location after moving it");
+        let pawn_piece = board.get_piece(to.try_into().unwrap());
+        assert!(pawn_piece.is_some(), "Not found pawn in new location after moving it");
     }
 }

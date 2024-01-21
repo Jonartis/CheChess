@@ -20,6 +20,11 @@ pub struct Piece
     owner : PieceOwnerType,
 }
 
+pub struct LocatedPiece<'a>
+{
+    pub location : Location,
+    pub opt_piece : Option<&'a Piece>
+}
 
 impl Piece
 {
@@ -55,9 +60,18 @@ impl Piece
 
     pub fn can_move(&self, from : Location, to : Location, board : &Board) -> Result<bool, MovementError>
     {
-        //TODO: the from must be a valid piece always as we are getting selected, can we pass the piece through? (maybe just the owner)
-        let from_piece = LocatedPiece { location: from, opt_piece: board.get_piece(from)? };
-        let to_piece = LocatedPiece { location: to, opt_piece: board.get_piece(to)? };
+        let board_from: BoardLocation = match from.try_into() {
+            Ok(new_loc) => new_loc,
+            Err(_) => { return Err(MovementError::SourceOutOfBounds); }
+        };
+        
+        let board_to: BoardLocation = match to.try_into() {
+            Ok(new_loc) => new_loc,
+            Err(_) => { return Err(MovementError::DestinationOutOfBounds); }
+        };
+        
+        let from_piece = LocatedPiece { location: from, opt_piece: board.get_piece(board_from) };
+        let to_piece = LocatedPiece { location: to, opt_piece: board.get_piece(board_to) };
         Ok(self.behaviour.can_move(from_piece, to_piece, board)?)
     }
 

@@ -7,7 +7,7 @@ pub mod queen_behaviour;
 pub mod rook_behaviour;
 
 use core::fmt;
-use super::movement::LocatedPiece;
+use super::piece::LocatedPiece;
 use super::error::MovementError;
 use super::Board;
 
