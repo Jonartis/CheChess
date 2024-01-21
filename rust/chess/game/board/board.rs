@@ -177,7 +177,7 @@ mod tests
 
     use super::Board;
 
-    fn multi_move(moves : Vec<&str>,  board: &mut Board)
+    fn multi_move(moves : &[&str],  board: &mut Board)
     {
         let iter = moves.windows(2);
         for pairs in IntoIterator::into_iter(iter)
@@ -195,7 +195,7 @@ mod tests
         let from = Location::try_from("2a").unwrap();
         let to = Location::try_from("3a").unwrap();
         let move_result = board.try_move(from, to);
-        assert!(!move_result.is_err(), "Failed to move pawn forward");
+        assert!(move_result.is_ok_and(|moved| moved), "Failed to move pawn forward");
 
         let no_piece = board.get_piece(from.try_into().unwrap());
         assert!(no_piece.is_none(), "Found pawn in original location after moving it");
@@ -205,14 +205,14 @@ mod tests
     }
 
     #[test]
-    fn pawn_forward_movement()
+    fn pawn_movement()
     {
         let mut board = Board::default();
         {
             let from = Location::try_from("2a").unwrap();
             let to = Location::try_from("3a").unwrap();
             let move_result = board.try_move(from, to);
-            assert!(!move_result.is_err(), "Failed to move pawn forward");
+            assert!(move_result.is_ok_and(|moved| moved), "Failed to move pawn forward");
         }
         {
             let from = Location::try_from("3a").unwrap();
@@ -228,11 +228,57 @@ mod tests
         }
         {
             //Move the pawn to a position where it can eat diagonally
-            multi_move(["3a","4a","5a","6a"].to_vec(), &mut board);
+            multi_move(&["3a","4a","5a","6a"], &mut board);
             let from = Location::try_from("6a").unwrap();
             let to = Location::try_from("7b").unwrap();
             let move_result = board.try_move(from, to);
             assert!(move_result.is_ok_and(|moved| moved), "We should be able to move diagonally if there is an enemy piece on the way");
         }
     }
+
+    #[test]
+    fn rook_movement()
+    {
+        let mut board = Board::default();
+        //Open the way to the left rook!
+        multi_move(&["2a","3a","4a","5a"], &mut board);
+        {
+            let from = Location::try_from("1a").unwrap();
+            let to = Location::try_from("2a").unwrap();
+            let move_result = board.try_move(from, to);
+            assert!(move_result.is_ok_and(|moved| moved), "Failed to move rook forward");
+        }
+        {
+            let from = Location::try_from("2a").unwrap();
+            let to = Location::try_from("1a").unwrap();
+            let move_result = board.try_move(from, to);
+            assert!(move_result.is_ok_and(|moved| moved), "Failed to move rook backwards");
+        }
+        {
+            let from = Location::try_from("1a").unwrap();
+            let to = Location::try_from("3a").unwrap();
+            let move_result = board.try_move(from, to);
+            assert!(move_result.is_ok_and(|moved| moved), "Failed to move rook forward multiple steps");
+        }
+        {
+            let from = Location::try_from("3a").unwrap();
+            let to = Location::try_from("3f").unwrap();
+            let move_result = board.try_move(from, to);
+            assert!(move_result.is_ok_and(|moved| moved), "Failed to move rook sidewards multiple steps");
+        }
+        {
+            let from = Location::try_from("3f").unwrap();
+            let to = Location::try_from("7f").unwrap();
+            let move_result = board.try_move(from, to);
+            assert!(move_result.is_ok_and(|moved| moved), "Failed to move consume enemy piece with rook");
+        }
+        {
+            let from = Location::try_from("7f").unwrap();
+            let to = Location::try_from("2f").unwrap();
+            let move_result = board.try_move(from, to);
+            assert!(move_result.is_ok_and(|moved| !moved), "We shouldn't be able to eat our own pieces");
+        }
+
+    }
+
 }
