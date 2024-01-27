@@ -14,6 +14,7 @@ pub enum PieceOwnerType
     Black
 }
 
+
 pub struct Piece
 {
     behaviour : Box<dyn PieceBehaviour>,
@@ -28,14 +29,14 @@ pub struct LocatedPiece<'a>
 
 impl Piece
 {
-    pub fn make_bishop(owner : PieceOwnerType) -> Piece
+    pub fn make_pawn(owner : PieceOwnerType) -> Piece
     {
-        Piece { behaviour: Box::new(bishop_behaviour::BishopBehaviour {}), owner }
+        Piece { behaviour: Box::new(pawn_behaviour::PawnBehaviour {}), owner }
     }
 
-    pub fn make_king(owner : PieceOwnerType) -> Piece
+    pub fn make_rook(owner : PieceOwnerType) -> Piece
     {
-        Piece { behaviour: Box::new(king_behaviour::KingBehaviour {}), owner }
+        Piece { behaviour: Box::new(rook_behaviour::RookBehaviour {}), owner }
     }
 
     pub fn make_knight(owner : PieceOwnerType) -> Piece
@@ -43,9 +44,9 @@ impl Piece
         Piece { behaviour: Box::new(knight_behaviour::KnightBehaviour {}), owner }
     }
 
-    pub fn make_pawn(owner : PieceOwnerType) -> Piece
+    pub fn make_bishop(owner : PieceOwnerType) -> Piece
     {
-        Piece { behaviour: Box::new(pawn_behaviour::PawnBehaviour {}), owner }
+        Piece { behaviour: Box::new(bishop_behaviour::BishopBehaviour{}), owner }
     }
 
     pub fn make_queen(owner : PieceOwnerType) -> Piece
@@ -53,9 +54,9 @@ impl Piece
         Piece { behaviour: Box::new(queen_behaviour::QueenBehaviour {}), owner }
     }
 
-    pub fn make_rook(owner : PieceOwnerType) -> Piece
+    pub fn make_king(owner : PieceOwnerType) -> Piece
     {
-        Piece { behaviour: Box::new(rook_behaviour::RookBehaviour {}), owner }
+        Piece { behaviour: Box::new(king_behaviour::KingBehaviour {}), owner }
     }
 
     pub fn can_move(&self, from : Location, to : Location, board : &Board) -> Result<bool, MovementError>

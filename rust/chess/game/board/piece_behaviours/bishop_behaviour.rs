@@ -5,10 +5,9 @@ use super::*;
 pub struct BishopBehaviour
 {}
 
-
-impl PieceBehaviour for BishopBehaviour
+impl BishopBehaviour
 {
-    fn can_move(&self, from : LocatedPiece, to : LocatedPiece, board: &Board) -> Result<bool, MovementError>
+    pub fn can_move_as_bishop(from: &LocatedPiece, to: &LocatedPiece, board: &Board) -> Result<bool, MovementError>
     {
         let mut can_move = false;
         let diffx = (from.location.col - to.location.col).abs();
@@ -30,6 +29,14 @@ impl PieceBehaviour for BishopBehaviour
 
         }
         Ok(can_move)
+    }
+}
+
+impl PieceBehaviour for BishopBehaviour
+{
+    fn can_move(&self, from : LocatedPiece, to : LocatedPiece, board: &Board) -> Result<bool, MovementError>
+    {
+        BishopBehaviour::can_move_as_bishop(&from, &to, board)
     }
 
     fn board_display(&self, owner : PieceOwnerType) -> &'static str
