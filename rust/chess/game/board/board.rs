@@ -3,6 +3,9 @@
 pub const BOARD_SIZE:i32 = 8;
 pub const BOARD_SIZE_US:usize = BOARD_SIZE as usize;
 
+#[cfg(test)]
+use super::error::InputError;
+
 use super::error::MovementError;
 use super::movement::*;
 use super::piece::Piece;
@@ -47,11 +50,11 @@ impl Board
         return pawn_row;
     }
 
-    pub fn default() -> Board
+    pub fn create() -> Board
     {
-        const BLACK:PieceOwnerType = PieceOwnerType::Black;
-        const WHITE:PieceOwnerType = PieceOwnerType::White;
-        const EMPTY:Option<Piece> = None;
+        const BLACK: PieceOwnerType = PieceOwnerType::Black;
+        const WHITE: PieceOwnerType = PieceOwnerType::White;
+        const EMPTY: Option<Piece> = None;
         const EMPTY_LINE:RowType = [EMPTY;BOARD_SIZE_US];
 
         Board{ 
@@ -65,6 +68,27 @@ impl Board
                 Board::create_pawn_row(WHITE),
                 Board::create_main_row(WHITE)]
         }
+    }
+
+    #[cfg(test)]
+    pub fn create_empty() -> Board
+    {
+        const EMPTY: Option<Piece> = None;
+        const EMPTY_LINE: RowType = [EMPTY; BOARD_SIZE_US];
+
+        Board {table: [EMPTY_LINE; BOARD_SIZE_US]}
+    }
+
+    #[cfg(test)]
+    pub fn add_piece(&mut self, location : Location, piece: Piece) -> Result<(), InputError>
+    {
+        let board_loc: BoardLocation = match location.try_into() {
+            Ok(new_loc) => new_loc,
+            Err(_) => { return Err(InputError::InvalidInput("Location is not inside board when adding piece".to_string())); }
+        };
+
+        self.table[board_loc.get_row()][board_loc.get_col()] = Some(piece);
+        Ok(())
     }
 
     pub fn try_move(&mut self, from: Location, to: Location) -> Result<bool, MovementError>
@@ -220,7 +244,7 @@ impl fmt::Display for Board
 #[cfg(test)]
 mod tests
 {
-    use crate::game::board::Location;
+    use crate::game::board::{piece::{Piece, PieceOwnerType}, Location};
 
     use super::Board;
 
@@ -233,16 +257,7 @@ mod tests
     {
         pub fn create() -> Self
         {
-            Self{board: Board::default()}
-        }
-        
-        pub fn multi_move(&mut self, moves : &[&str])
-        {
-            let iter = moves.windows(2);
-            for pairs in IntoIterator::into_iter(iter)
-            {
-                let _ = self.try_move(pairs[0], pairs[1]);
-            }
+            Self{board: Board::create_empty()}
         }
 
         pub fn try_move(&mut self, from_str: &str, to_str: &str) -> Result<bool, super::MovementError>
@@ -257,12 +272,40 @@ mod tests
             let from = Location::try_from(from_str).unwrap();
             self.board.get_piece(from.try_into().unwrap()).is_some()
         }
+
+        pub fn add_pawn(&mut self, loc_str: &str, owner: PieceOwnerType)
+        {
+            self.add_piece(loc_str, Piece::make_pawn(owner));
+        }
+
+        pub fn add_rook(&mut self, loc_str: &str, owner: PieceOwnerType)
+        {
+            self.add_piece(loc_str, Piece::make_rook(owner));
+        }
+
+        pub fn add_bishop(&mut self, loc_str: &str, owner: PieceOwnerType)
+        {
+            self.add_piece(loc_str, Piece::make_bishop(owner));
+        }
+
+        fn add_piece(&mut self, loc_str: &str, piece: Piece)
+        {
+            let loc = Location::try_from(loc_str).unwrap();
+            match self.board.add_piece(loc, piece) {
+                Ok(_) => {}
+                Err(input_error) => {assert!(false, "{:?}", input_error);}
+            }
+        }
+
     }
 
     #[test]
     fn board_tracks_movement()
     {
         let mut board = BoardTester::create();
+
+        board.add_pawn("2a", PieceOwnerType::White);
+
         let from = "2a";
         let to = "3a";
         let move_result = board.try_move(from, to);
@@ -275,6 +318,8 @@ mod tests
     fn pawn_movement()
     {
         let mut board = BoardTester::create();
+
+        board.add_pawn("2a", PieceOwnerType::White);
         {
             let move_result = board.try_move("2a", "3a");
             assert!(move_result.is_ok_and(|moved| moved), "Failed to move pawn forward");
@@ -288,10 +333,14 @@ mod tests
             assert!(move_result.is_ok_and(|moved| !moved), "We should have failed to move diagonally as there is no piece in the diagonal");
         }
         {
-            //Move the pawn to a position where it can eat diagonally
-            board.multi_move(&["3a","4a","5a","6a"]);
-            let move_result = board.try_move("6a", "7b");
-            assert!(move_result.is_ok_and(|moved| moved), "We should be able to move diagonally if there is an enemy piece on the way");
+            //Place an enemy piece in the diagonal to test eating
+            board.add_pawn("4b", PieceOwnerType::Black);
+            board.add_pawn("5a", PieceOwnerType::Black);
+
+            let move_result = board.try_move("3a", "4b");
+            assert!(move_result.is_ok_and(|moved| moved), "We should be able to move diagonally if there is an enemy piece on the way (right diagonal)");
+            let move_result = board.try_move("4b", "5a");
+            assert!(move_result.is_ok_and(|moved| moved), "We should be able to move diagonally if there is an enemy piece on the way (left diagonal)");
         }
     }
 
@@ -299,31 +348,34 @@ mod tests
     fn rook_movement()
     {
         let mut board = BoardTester::create();
-        //Open the way to the left rook!
-        board.multi_move(&["2a","3a","4a","5a"]);
+        board.add_rook("1a", PieceOwnerType::White);
         {
-            let move_result = board.try_move("1a", "2a");
+            let move_result = board.try_move("1a", "3a");
             assert!(move_result.is_ok_and(|moved| moved), "Failed to move rook forward");
         }
         {
-            let move_result = board.try_move("2a", "1a");
+            let move_result = board.try_move("3a", "1a");
             assert!(move_result.is_ok_and(|moved| moved), "Failed to move rook backwards");
         }
         {
+            let move_result = board.try_move("1a", "1d");
+            assert!(move_result.is_ok_and(|moved| moved), "Failed to move rook to the right");
+        }
+        {
+            let move_result = board.try_move("1d", "1a");
+            assert!(move_result.is_ok_and(|moved| moved), "Failed to move rook to the left");
+        }
+        
+        //Enemy joins the battle
+        board.add_pawn("3a", PieceOwnerType::Black);
+
+        {
+            let move_result = board.try_move("1a", "7a");
+            assert!(move_result.is_ok_and(|moved| !moved), "We shouldn't we able to move accross pieces");
+        }
+        {
             let move_result = board.try_move("1a", "3a");
-            assert!(move_result.is_ok_and(|moved| moved), "Failed to move rook forward multiple steps");
-        }
-        {
-            let move_result = board.try_move("3a", "3f");
-            assert!(move_result.is_ok_and(|moved| moved), "Failed to move rook sidewards multiple steps");
-        }
-        {
-            let move_result = board.try_move("3f", "7f");
-            assert!(move_result.is_ok_and(|moved| moved), "Failed to move consume enemy piece with rook");
-        }
-        {
-            let move_result = board.try_move("7f", "2f");
-            assert!(move_result.is_ok_and(|moved| !moved), "We shouldn't be able to eat our own pieces");
+            assert!(move_result.is_ok_and(|moved| moved), "We should be able to eat enemy pieces");
         }
 
     }
@@ -332,23 +384,32 @@ mod tests
     fn bishop_movement()
     {
         let mut board = BoardTester::create();
-        //Open the way to the left bishop!
-        board.multi_move(&["2d","3d","4d","5d"]);
+        
+        board.add_bishop("1c", PieceOwnerType::White);
         {
-            let move_result = board.try_move("1c", "2d");
-            assert!(move_result.is_ok_and(|moved| moved), "Failed to move bishop in diagonal");
+            let move_result = board.try_move("1c", "3e");
+            assert!(move_result.is_ok_and(|moved| moved), "Failed to move bishop in diagonal (up right)");
         }
         {
-            let move_result = board.try_move("2d", "4b");
-            assert!(move_result.is_ok_and(|moved| moved), "Failed to move bishop in diagonal multiple steps");
+            let move_result = board.try_move("3e", "5c");
+            assert!(move_result.is_ok_and(|moved| moved), "Failed to move bishop in diagonal (up left)");
         }
         {
-            let move_result = board.try_move("4b", "7e");
-            assert!(move_result.is_ok_and(|moved| moved), "Failed to eat an enemy piece");
+            let move_result = board.try_move("5c", "3e");
+            assert!(move_result.is_ok_and(|moved| moved), "Failed to move bishop in diagonal (down right)");
         }
         {
-            let move_result = board.try_move("7e", "4h");
-            assert!(move_result.is_ok_and(|moved| moved), "Failed to move downwards");
+            let move_result = board.try_move("3e", "1c");
+            assert!(move_result.is_ok_and(|moved| moved), "Failed to move bishop in diagonal (down left)");
+        }
+        board.add_pawn("2b", PieceOwnerType::Black);
+        {
+            let move_result = board.try_move("1c", "3a");
+            assert!(move_result.is_ok_and(|moved| !moved), "We shouldn't be able to move accross pieces");
+        }
+        {
+            let move_result = board.try_move("1c", "2b");
+            assert!(move_result.is_ok_and(|moved| moved), "We should be able to eat enemy pieces");
         }
     }
 }

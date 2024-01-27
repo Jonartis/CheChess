@@ -22,7 +22,7 @@ impl Game
     {
         Game
         {
-            board: Board::default(),
+            board: Board::create(),
             exit_requested: false,
             help_requested: false
         }
