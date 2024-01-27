@@ -86,6 +86,6 @@ impl fmt::Display for Piece
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result
     {
-        write!(f, "{}", self.behaviour)
+        write!(f, "{}", self.behaviour.board_display(self.owner))
     }
 }

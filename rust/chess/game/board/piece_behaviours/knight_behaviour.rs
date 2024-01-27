@@ -12,9 +12,10 @@ impl PieceBehaviour for KnightBehaviour
         Ok(false)
     }
 
-    fn board_display(&self) -> &'static str
+    fn board_display(&self, owner : PieceOwnerType) -> &'static str
     {
-        "k"
+        //H for Horse as k is taken by King
+        if owner == PieceOwnerType::Black { "h" } else { "H" }
     }
     
 }

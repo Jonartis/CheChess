@@ -34,9 +34,9 @@ impl PieceBehaviour for PawnBehaviour
         Ok(can_move)
     }
 
-    fn board_display(&self) -> &'static str
+    fn board_display(&self, owner : PieceOwnerType) -> &'static str
     {
-        "p"
+        if owner == PieceOwnerType::Black { "p" } else { "P" }
     }
     
 }

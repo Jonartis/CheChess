@@ -141,6 +141,53 @@ impl Board
         Ok(found_piece)
     }
 
+    pub fn has_piece_diagonal(&self, in_from : Location, in_to : Location) -> Result<bool, MovementError>
+    {
+        let start: BoardLocation = match in_from.try_into() {
+            Ok(new_loc) => new_loc,
+            Err(_) => { return Err(MovementError::SourceOutOfBounds); }
+        };
+        
+        let dest: BoardLocation = match in_to.try_into() {
+            Ok(new_loc) => new_loc,
+            Err(_) => { return Err(MovementError::DestinationOutOfBounds); }
+        };
+        let mut found_piece = false;
+
+        let col_range: Vec<usize> = 
+        if start.get_col() > dest.get_col() 
+        { 
+            (dest.get_col()+1..start.get_col()).collect()
+        }
+        else 
+        { 
+            (start.get_col()+1..dest.get_col()).rev().collect()
+        };
+
+        let row_range: Vec<usize> = 
+        if start.get_row() > dest.get_row() 
+        {
+            (dest.get_row()+1..start.get_row()).collect()
+        }
+        else
+        {
+            (start.get_row()+1..dest.get_row()).rev().collect()
+        };
+
+        for it in col_range.into_iter().zip(row_range)
+        {
+            let (col, row) = it;
+            let test_loc = BoardLocation::try_create(row, col).unwrap();
+            if self.get_piece(test_loc).is_some()
+            {
+                found_piece = true;
+                break;
+            }
+        }
+
+        Ok(found_piece)
+    }
+
 }
 
 impl fmt::Display for Board
@@ -281,7 +328,6 @@ mod tests
 
     }
 
-    #[ignore] //Ignored until bishop behaviour is implemented
     #[test]
     fn bishop_movement()
     {
@@ -301,8 +347,8 @@ mod tests
             assert!(move_result.is_ok_and(|moved| moved), "Failed to eat an enemy piece");
         }
         {
-            let move_result = board.try_move("4b", "7e");
-            assert!(move_result.is_ok_and(|moved| moved), "Failed to eat an enemy piece");
+            let move_result = board.try_move("7e", "4h");
+            assert!(move_result.is_ok_and(|moved| moved), "Failed to move downwards");
         }
     }
 }

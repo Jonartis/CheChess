@@ -28,9 +28,9 @@ impl PieceBehaviour for RookBehaviour
         Ok(can_move)
     }
 
-    fn board_display(&self) -> &'static str
+    fn board_display(&self, owner : PieceOwnerType) -> &'static str
     {
-        "r"
+        if owner == PieceOwnerType::Black { "r" } else { "R" }
     }
     
 }

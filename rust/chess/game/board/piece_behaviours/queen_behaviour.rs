@@ -12,9 +12,9 @@ impl PieceBehaviour for QueenBehaviour
         Ok(false)
     }
 
-    fn board_display(&self) -> &'static str
+    fn board_display(&self, owner : PieceOwnerType) -> &'static str
     {
-        "q"
+        if owner == PieceOwnerType::Black { "q" } else { "Q" }
     }
     
 }
