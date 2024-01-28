@@ -7,9 +7,9 @@ use super::*;
 pub struct QueenBehaviour
 {}
 
-impl PieceBehaviour for QueenBehaviour
+impl QueenBehaviour
 {
-    fn can_move(&self, from : LocatedPiece, to : LocatedPiece, board: &Board) -> Result<bool, MovementError>
+    pub fn can_move_as_queen(from : LocatedPiece, to : LocatedPiece, board: &Board) -> Result<bool, MovementError>
     {
         let mut can_move = RookBehaviour::can_move_as_rook(&from, &to, board)?;
         if !can_move
@@ -17,6 +17,14 @@ impl PieceBehaviour for QueenBehaviour
             can_move = BishopBehaviour::can_move_as_bishop(&from, &to, board)?;
         }
         Ok(can_move)
+    }
+}
+
+impl PieceBehaviour for QueenBehaviour
+{
+    fn can_move(&self, from : LocatedPiece, to : LocatedPiece, board: &Board) -> Result<bool, MovementError>
+    {
+        Ok(QueenBehaviour::can_move_as_queen(from, to, board)?)
     }
 
     fn board_display(&self, owner : PieceOwnerType) -> &'static str

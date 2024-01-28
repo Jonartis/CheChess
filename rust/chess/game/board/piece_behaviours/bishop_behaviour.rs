@@ -10,8 +10,8 @@ impl BishopBehaviour
     pub fn can_move_as_bishop(from: &LocatedPiece, to: &LocatedPiece, board: &Board) -> Result<bool, MovementError>
     {
         let mut can_move = false;
-        let diffx = (from.location.col - to.location.col).abs();
-        let diffy = (from.location.row - to.location.row).abs();
+        let diffx = from.location.col.abs_diff(to.location.col);
+        let diffy = from.location.row.abs_diff(to.location.row);
         //If we are moving diagonally...
         if diffx == diffy
         {
