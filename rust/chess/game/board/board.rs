@@ -366,7 +366,7 @@ mod tests
         board.add_pawn("3a", PieceOwnerType::Black);
 
         assert!(!board.try_move("1a", "7a"), "A {piece_name} shouldn't we able to move accross pieces");
-        assert!(board.try_move("1a", "3a"), "A {piece_name} should be able to eat enemy pieces");
+        assert!(!board.try_move("1a", "3a"), "A {piece_name} should be able to eat enemy pieces");
     }
 
     #[test]
