@@ -73,7 +73,21 @@ impl Piece
         
         let from_piece = LocatedPiece { location: from, opt_piece: board.get_piece(board_from) };
         let to_piece = LocatedPiece { location: to, opt_piece: board.get_piece(board_to) };
-        Ok(self.behaviour.can_move(from_piece, to_piece, board)?)
+
+        if from_piece.opt_piece.is_none()
+        {
+            return Err(MovementError::SourcePieceNotFound);
+        }
+
+        let mut can_move = match to_piece.opt_piece
+        {
+            Some(piece) => piece.get_owner() != from_piece.opt_piece.unwrap().get_owner(),
+            None => true
+        };
+        
+        can_move = can_move && self.behaviour.can_move(from_piece, to_piece, board)?;
+
+        Ok(can_move)
     }
 
     pub fn get_owner(&self) -> PieceOwnerType

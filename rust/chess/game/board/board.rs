@@ -290,6 +290,11 @@ mod tests
             self.add_piece(loc_str, Piece::make_rook(owner));
         }
 
+        pub fn add_knight(&mut self, loc_str: &str, owner: PieceOwnerType)
+        {
+            self.add_piece(loc_str, Piece::make_knight(owner));
+        }
+
         pub fn add_bishop(&mut self, loc_str: &str, owner: PieceOwnerType)
         {
             self.add_piece(loc_str, Piece::make_bishop(owner));
@@ -370,6 +375,26 @@ mod tests
         let mut board = BoardTester::create();
         board.add_rook("1a", PieceOwnerType::White);
         rook_movement_helper(&mut board, "rook");
+    }
+
+    #[test]
+    fn knight_movement()
+    {
+        let mut board = BoardTester::create();
+        board.add_knight("3d", PieceOwnerType::White);
+
+        assert!(board.try_move("3d", "5c"), "Failed to move knight in L shape upup left");
+        assert!(board.try_move("5c", "3d"), "Failed to move knight in L shape downdown right");
+        assert!(board.try_move("3d", "5e"), "Failed to move knight in L shape upup right");
+        assert!(board.try_move("5e", "3d"), "Failed to move knight in L shape downdown left");
+        assert!(board.try_move("3d", "4f"), "Failed to move knight in L shape up rightright");
+        assert!(board.try_move("4f", "3d"), "Failed to move knight in L shape down leftleft");
+        assert!(board.try_move("3d", "4b"), "Failed to move knight in L shape up leftleft");
+        assert!(board.try_move("4b", "3d"), "Failed to move knight in L shape down rightright");
+
+        board.add_pawn("4b", PieceOwnerType::Black);
+
+        assert!(board.try_move("3d", "4b"), "Failed to eat piece with Knight");
     }
 
     fn bishop_movement_helper(board : &mut BoardTester, piece_name: &str)
