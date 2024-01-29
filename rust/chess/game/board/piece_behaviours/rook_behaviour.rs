@@ -5,22 +5,22 @@ pub struct RookBehaviour
 
 impl RookBehaviour
 {
-    pub fn can_move_as_rook(from: &LocatedPiece, to: &LocatedPiece, board : &Board) -> Result<bool, MovementError>
+    pub fn can_move_as_rook(from: &LocatedPiece, to: &LocatedPiece, board : &Board) -> bool
     {
         let mut can_move = false;
         //If the rook is moving in a straight line...
-        if from.location.col == to.location.col || from.location.row == to.location.row
+        if from.location.get_col() == to.location.get_col() || from.location.get_row() == to.location.get_row()
         {
             //...and there are no pieces on the way.
-            can_move = !board.has_piece_straight(from.location, to.location)?;
+            can_move = !board.has_piece_straight(from.location, to.location);
         }
-        Ok(can_move)
+        can_move
     }
 }
 
 impl PieceBehaviour for RookBehaviour
 {
-    fn can_move(&self, from : LocatedPiece, to : LocatedPiece, board : &Board) -> Result<bool, MovementError>
+    fn can_move(&self, from : LocatedPiece, to : LocatedPiece, board : &Board) -> bool
     {
         RookBehaviour::can_move_as_rook(&from, &to, board)
     }

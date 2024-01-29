@@ -7,14 +7,14 @@ pub struct KnightBehaviour
 
 impl PieceBehaviour for KnightBehaviour
 {
-    fn can_move(&self, from : LocatedPiece, to : LocatedPiece, _board: &Board) -> Result<bool, MovementError>
+    fn can_move(&self, from : LocatedPiece, to : LocatedPiece, _board: &Board) -> bool
     {
-        let col_diff = from.location.col.abs_diff(to.location.col);
-        let row_diff = from.location.row.abs_diff(to.location.row);
+        let col_diff = from.location.get_col().abs_diff(to.location.get_col());
+        let row_diff = from.location.get_row().abs_diff(to.location.get_row());
 
         let valid_move = col_diff <= 2 && row_diff <= 2 && col_diff + row_diff == 3;
 
-        Ok(valid_move)
+        valid_move
     }
 
     fn board_display(&self, owner : PieceOwnerType) -> &'static str

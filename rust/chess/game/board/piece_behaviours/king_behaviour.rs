@@ -9,17 +9,17 @@ pub struct KingBehaviour
 
 impl PieceBehaviour for KingBehaviour
 {
-    fn can_move(&self, from: LocatedPiece, to: LocatedPiece, board: &Board) -> Result<bool, MovementError>
+    fn can_move(&self, from: LocatedPiece, to: LocatedPiece, board: &Board) -> bool
     {
-        let col_diff = from.location.col.abs_diff(to.location.col);
-        let row_diff = from.location.row.abs_diff(to.location.row);
-        
+        let col_diff = from.location.get_col().abs_diff(to.location.get_col());
+        let row_diff = from.location.get_row().abs_diff(to.location.get_row());
+
         let mut can_move = false;
         if col_diff <= 1 && row_diff <= 1
         {
-            can_move = QueenBehaviour::can_move_as_queen(from, to, board)?;
+            can_move = QueenBehaviour::can_move_as_queen(from, to, board);
         }
-        Ok(can_move)
+        can_move
     }
 
     fn board_display(&self, owner : PieceOwnerType) -> &'static str

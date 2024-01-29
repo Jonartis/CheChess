@@ -1,2 +1,4 @@
 
--Add ability to create an empty board and add pieces to it so all the movements of the pieces can be tested easily
+-Pawn upgrade
+-Game end
+-Turns

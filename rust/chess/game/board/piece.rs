@@ -4,7 +4,6 @@ use core::fmt;
 
 use super::movement::*;
 use super::board::Board;
-use super::error::MovementError;
 use super::piece_behaviours::*;
 
 #[derive(Copy, Clone, PartialEq)]
@@ -23,7 +22,7 @@ pub struct Piece
 
 pub struct LocatedPiece<'a>
 {
-    pub location : Location,
+    pub location : BoardLocation,
     pub opt_piece : Option<&'a Piece>
 }
 
@@ -59,35 +58,18 @@ impl Piece
         Piece { behaviour: Box::new(king_behaviour::KingBehaviour {}), owner }
     }
 
-    pub fn can_move(&self, from : Location, to : Location, board : &Board) -> Result<bool, MovementError>
+    pub fn can_move(&self, from : BoardLocation, to : BoardLocation, board : &Board) -> bool
     {
-        let board_from: BoardLocation = match from.try_into() {
-            Ok(new_loc) => new_loc,
-            Err(_) => { return Err(MovementError::SourceOutOfBounds); }
-        };
-        
-        let board_to: BoardLocation = match to.try_into() {
-            Ok(new_loc) => new_loc,
-            Err(_) => { return Err(MovementError::DestinationOutOfBounds); }
-        };
-        
-        let from_piece = LocatedPiece { location: from, opt_piece: board.get_piece(board_from) };
-        let to_piece = LocatedPiece { location: to, opt_piece: board.get_piece(board_to) };
+        let from_piece = LocatedPiece { location: from, opt_piece: Some(self) };
+        let to_piece = LocatedPiece { location: to, opt_piece: board.get_piece(to) };
 
-        if from_piece.opt_piece.is_none()
+        let can_move = match to_piece.opt_piece
         {
-            return Err(MovementError::SourcePieceNotFound);
-        }
-
-        let mut can_move = match to_piece.opt_piece
-        {
-            Some(piece) => piece.get_owner() != from_piece.opt_piece.unwrap().get_owner(),
+            Some(piece) => piece.get_owner() != self.get_owner(),
             None => true
         };
         
-        can_move = can_move && self.behaviour.can_move(from_piece, to_piece, board)?;
-
-        Ok(can_move)
+        return can_move && self.behaviour.can_move(from_piece, to_piece, board);
     }
 
     pub fn get_owner(&self) -> PieceOwnerType

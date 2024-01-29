@@ -103,14 +103,14 @@ impl Board
             Err(_) => { return Err(MovementError::DestinationOutOfBounds); }
         };
         
-        let opt_piece = self.table[board_from.get_row()][board_from.get_col()].as_ref();
+        let opt_piece = self.get_piece(board_from);
 
         let piece = match opt_piece {
             Some(piece) => piece,
             None => return Err(MovementError::SourcePieceNotFound)
         };
 
-        let can_move = piece.can_move(from, to, self)?;
+        let can_move = piece.can_move(board_from, board_to, self);
         if can_move
         {
             self.table[board_to.get_row()][board_to.get_col()] = self.table[board_from.get_row()][board_from.get_col()].take();
@@ -123,18 +123,8 @@ impl Board
         self.table[loc.get_row()][loc.get_col()].as_ref()
     }
 
-    pub fn has_piece_straight(&self, in_from : Location, in_to : Location) -> Result<bool, MovementError>
+    pub fn has_piece_straight(&self, start : BoardLocation, dest : BoardLocation) -> bool
     {
-        let start: BoardLocation = match in_from.try_into() {
-            Ok(new_loc) => new_loc,
-            Err(_) => { return Err(MovementError::SourceOutOfBounds); }
-        };
-        
-        let dest: BoardLocation = match in_to.try_into() {
-            Ok(new_loc) => new_loc,
-            Err(_) => { return Err(MovementError::DestinationOutOfBounds); }
-        };
-
         let mut found_piece = false;
         if start.get_col() == dest.get_col()
         {
@@ -162,20 +152,11 @@ impl Board
                 }
             }
         }
-        Ok(found_piece)
+        found_piece
     }
 
-    pub fn has_piece_diagonal(&self, in_from : Location, in_to : Location) -> Result<bool, MovementError>
+    pub fn has_piece_diagonal(&self, start : BoardLocation, dest : BoardLocation) -> bool
     {
-        let start: BoardLocation = match in_from.try_into() {
-            Ok(new_loc) => new_loc,
-            Err(_) => { return Err(MovementError::SourceOutOfBounds); }
-        };
-        
-        let dest: BoardLocation = match in_to.try_into() {
-            Ok(new_loc) => new_loc,
-            Err(_) => { return Err(MovementError::DestinationOutOfBounds); }
-        };
         let mut found_piece = false;
 
         let col_range: Vec<usize> = 
@@ -209,7 +190,16 @@ impl Board
             }
         }
 
-        Ok(found_piece)
+        found_piece
+    }
+
+    pub fn is_starting_pawn_row(row : usize, owner : PieceOwnerType) -> bool
+    {
+        if owner == PieceOwnerType::White
+        {
+            return row == (BOARD_SIZE_US - 2);
+        }
+        row == 1
     }
 
 }
@@ -338,14 +328,14 @@ mod tests
     }
 
     #[test]
-    fn pawn_movement()
+    fn pawn_movement_white()
     {
         let mut board = BoardTester::create();
 
         board.add_pawn("2a", PieceOwnerType::White);
         assert!(board.try_move("2a", "3a"), "Failed to move pawn forward");
-        assert!(!board.try_move("3a", "5a"), "We should only be able to move one step at a time");
         assert!(!board.try_move("3a", "4b"), "We should have failed to move diagonally as there is no piece in the diagonal");
+        assert!(!board.try_move("3a", "2a"), "We shouldn't be able to move backwards");
 
         //Place an enemy piece in the diagonal to test eating
         board.add_pawn("4b", PieceOwnerType::Black);
@@ -353,6 +343,40 @@ mod tests
 
         assert!(board.try_move("3a", "4b"), "We should be able to move diagonally if there is an enemy piece on the way (right diagonal)");
         assert!(board.try_move("4b", "5a"), "We should be able to move diagonally if there is an enemy piece on the way (left diagonal)");
+
+        board.add_pawn("2b", PieceOwnerType::White);
+        board.add_rook("3b", PieceOwnerType::Black);
+
+        assert!(!board.try_move("2b", "4b"), "We shouldn't be able to move two steps if there is a piece in the middle");
+        board.try_move("3b", "3d");
+        assert!(board.try_move("2b", "4b"), "We should be able to move two steps if we haven't moved the pawn yet");
+        assert!(!board.try_move("4b", "6b"), "We should not be able to move two steps if we have already moved the pawn");
+    }
+
+    #[test]
+    fn pawn_movement_black()
+    {
+        let mut board = BoardTester::create();
+
+        board.add_pawn("7a", PieceOwnerType::Black);
+        assert!(board.try_move("7a", "6a"), "Failed to move pawn forward");
+        assert!(!board.try_move("6a", "5b"), "We should have failed to move diagonally as there is no piece in the diagonal");
+        assert!(!board.try_move("6a", "7a"), "We shouldn't be able to move backwards");
+
+        //Place an enemy piece in the diagonal to test eating
+        board.add_pawn("5b", PieceOwnerType::White);
+        board.add_pawn("4a", PieceOwnerType::White);
+
+        assert!(board.try_move("6a", "5b"), "We should be able to move diagonally if there is an enemy piece on the way (right diagonal)");
+        assert!(board.try_move("5b", "4a"), "We should be able to move diagonally if there is an enemy piece on the way (left diagonal)");
+
+        board.add_pawn("7b", PieceOwnerType::Black);
+        board.add_rook("6b", PieceOwnerType::White);
+
+        assert!(!board.try_move("7b", "5b"), "We shouldn't be able to move two steps if there is a piece in the middle");
+        board.try_move("6b", "6d");
+        assert!(board.try_move("7b", "5b"), "We should be able to move two steps if we haven't moved the pawn yet");
+        assert!(!board.try_move("5b", "3b"), "We should not be able to move two steps if we have already moved the pawn");
     }
 
     fn rook_movement_helper(board : &mut BoardTester, piece_name: &str)

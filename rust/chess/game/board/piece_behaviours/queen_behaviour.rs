@@ -9,22 +9,22 @@ pub struct QueenBehaviour
 
 impl QueenBehaviour
 {
-    pub fn can_move_as_queen(from : LocatedPiece, to : LocatedPiece, board: &Board) -> Result<bool, MovementError>
+    pub fn can_move_as_queen(from : LocatedPiece, to : LocatedPiece, board: &Board) -> bool
     {
-        let mut can_move = RookBehaviour::can_move_as_rook(&from, &to, board)?;
+        let mut can_move = RookBehaviour::can_move_as_rook(&from, &to, board);
         if !can_move
         {
-            can_move = BishopBehaviour::can_move_as_bishop(&from, &to, board)?;
+            can_move = BishopBehaviour::can_move_as_bishop(&from, &to, board);
         }
-        Ok(can_move)
+        can_move
     }
 }
 
 impl PieceBehaviour for QueenBehaviour
 {
-    fn can_move(&self, from : LocatedPiece, to : LocatedPiece, board: &Board) -> Result<bool, MovementError>
+    fn can_move(&self, from : LocatedPiece, to : LocatedPiece, board: &Board) -> bool
     {
-        Ok(QueenBehaviour::can_move_as_queen(from, to, board)?)
+        QueenBehaviour::can_move_as_queen(from, to, board)
     }
 
     fn board_display(&self, owner : PieceOwnerType) -> &'static str
