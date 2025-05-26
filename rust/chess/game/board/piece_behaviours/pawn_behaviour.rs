@@ -7,7 +7,7 @@ pub struct PawnBehaviour
 
 impl PieceBehaviour for PawnBehaviour
 {
-    fn can_move(&self, from: LocatedPiece, to: LocatedPiece, board : &Board) -> bool
+    fn can_move(&self, from: &LocatedPiece, to: &LocatedPiece, board : &Board) -> bool
     {
         let mut can_move : bool;
         let owner = from.opt_piece.unwrap().get_owner();
@@ -43,8 +43,13 @@ impl PieceBehaviour for PawnBehaviour
         }
         can_move
     }
+    
+    fn get_type(&self) -> PieceType
+    {
+        PieceType::Pawn
+    }
 
-    fn board_display(&self, owner : PieceOwnerType) -> &'static str
+    fn to_board_string(&self, owner : PieceOwnerType) -> &'static str
     {
         if owner == PieceOwnerType::Black { "p" } else { "P" }
     }

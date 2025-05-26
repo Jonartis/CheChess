@@ -9,7 +9,7 @@ pub struct KingBehaviour
 
 impl PieceBehaviour for KingBehaviour
 {
-    fn can_move(&self, from: LocatedPiece, to: LocatedPiece, board: &Board) -> bool
+    fn can_move(&self, from: &LocatedPiece, to: &LocatedPiece, board: &Board) -> bool
     {
         let col_diff = from.location.get_col().abs_diff(to.location.get_col());
         let row_diff = from.location.get_row().abs_diff(to.location.get_row());
@@ -22,7 +22,12 @@ impl PieceBehaviour for KingBehaviour
         can_move
     }
 
-    fn board_display(&self, owner : PieceOwnerType) -> &'static str
+    fn get_type(&self) -> PieceType
+    {
+        PieceType::King
+    }
+
+    fn to_board_string(&self, owner : PieceOwnerType) -> &'static str
     {
         if owner == PieceOwnerType::Black { "k" } else { "K" }
     }

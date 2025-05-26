@@ -20,12 +20,17 @@ impl RookBehaviour
 
 impl PieceBehaviour for RookBehaviour
 {
-    fn can_move(&self, from : LocatedPiece, to : LocatedPiece, board : &Board) -> bool
+    fn can_move(&self, from : &LocatedPiece, to : &LocatedPiece, board : &Board) -> bool
     {
-        RookBehaviour::can_move_as_rook(&from, &to, board)
+        RookBehaviour::can_move_as_rook(from, to, board)
     }
 
-    fn board_display(&self, owner : PieceOwnerType) -> &'static str
+    fn get_type(&self) -> PieceType
+    {
+        PieceType::Rook
+    }
+
+    fn to_board_string(&self, owner : PieceOwnerType) -> &'static str
     {
         if owner == PieceOwnerType::Black { "r" } else { "R" }
     }

@@ -2,6 +2,15 @@
 use super::error::InputError;
 use super::board::{BOARD_SIZE, BOARD_SIZE_US};
 
+#[derive(PartialEq)]
+pub enum MovementResult
+{
+    Moved,
+    GameFinished,
+    PawnUpgrade,
+    FailedToMove
+}
+
 #[derive(Copy, Clone)]
 pub struct Location
 {

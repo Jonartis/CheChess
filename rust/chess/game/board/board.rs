@@ -8,15 +8,21 @@ use super::error::InputError;
 
 use super::error::MovementError;
 use super::movement::*;
+use super::piece::LocatedPiece;
 use super::piece::Piece;
+use super::piece::PieceType;
 use super::piece::PieceOwnerType;
 use core::fmt;
+use std::collections::HashMap;
 
 type RowType = [Option<Piece>; BOARD_SIZE_US];
 
 pub struct Board
 {
-    table : [RowType; BOARD_SIZE_US] //2D array
+    table : [RowType; BOARD_SIZE_US],
+    playing_player_type : PieceOwnerType,
+    consumed_piece_types : HashMap<PieceOwnerType, HashMap<PieceType, u8>>, //Set of pieces consumed by each player. Stores how many times the piece was consumed
+    ignore_ownership : bool
 }
 
 impl Board
@@ -24,14 +30,14 @@ impl Board
     fn create_main_row(owner : PieceOwnerType) -> RowType
     {
         [
-            Some(Piece::make_rook(owner)),
-            Some(Piece::make_knight(owner)),
-            Some(Piece::make_bishop(owner)),
-            Some(Piece::make_queen(owner)),
-            Some(Piece::make_king(owner)),
-            Some(Piece::make_bishop(owner)),
-            Some(Piece::make_knight(owner)),
-            Some(Piece::make_rook(owner))
+            Some(Piece::make(PieceType::Pawn, owner)),
+            Some(Piece::make(PieceType::Knight, owner)),
+            Some(Piece::make(PieceType::Bishop, owner)),
+            Some(Piece::make(PieceType::Queen, owner)),
+            Some(Piece::make(PieceType::King, owner)),
+            Some(Piece::make(PieceType::Bishop, owner)),
+            Some(Piece::make(PieceType::Knight, owner)),
+            Some(Piece::make(PieceType::Rook, owner))
         ]
     }
 
@@ -44,7 +50,7 @@ impl Board
         
         for i in 0..BOARD_SIZE_US
         {
-            pawn_row[i] = Some(Piece::make_pawn(owner))
+            pawn_row[i] = Some(Piece::make(PieceType::Pawn, owner))
         }
         
         return pawn_row;
@@ -66,17 +72,31 @@ impl Board
                 EMPTY_LINE,
                 EMPTY_LINE,
                 Board::create_pawn_row(WHITE),
-                Board::create_main_row(WHITE)]
+                Board::create_main_row(WHITE)],
+                playing_player_type: PieceOwnerType::White,
+                consumed_piece_types: HashMap::from([
+                    (PieceOwnerType::Black, HashMap::new()),
+                    (PieceOwnerType::White, HashMap::new()),
+                ]),
+                ignore_ownership: false
         }
     }
 
     #[cfg(test)]
-    pub fn create_empty() -> Board
+    pub fn create_empty(ignore_ownership : bool) -> Board
     {
         const EMPTY: Option<Piece> = None;
         const EMPTY_LINE: RowType = [EMPTY; BOARD_SIZE_US];
 
-        Board {table: [EMPTY_LINE; BOARD_SIZE_US]}
+        Board {
+            table: [EMPTY_LINE; BOARD_SIZE_US],
+            playing_player_type: PieceOwnerType::White,
+            consumed_piece_types: HashMap::from([
+                (PieceOwnerType::Black, HashMap::new()),
+                (PieceOwnerType::White, HashMap::new()),
+            ]),
+            ignore_ownership
+        }
     }
 
     #[cfg(test)]
@@ -91,36 +111,82 @@ impl Board
         Ok(())
     }
 
-    pub fn try_move(&mut self, from: Location, to: Location) -> Result<bool, MovementError>
+    pub fn try_move(&mut self, from: Location, to: Location) -> Result<MovementResult, MovementError>
     {
-        let board_from: BoardLocation = match from.try_into() {
-            Ok(new_loc) => new_loc,
-            Err(_) => { return Err(MovementError::SourceOutOfBounds); }
-        };
-        
-        let board_to: BoardLocation = match to.try_into() {
-            Ok(new_loc) => new_loc,
-            Err(_) => { return Err(MovementError::DestinationOutOfBounds); }
-        };
-        
-        let opt_piece = self.get_piece(board_from);
+        let board_from: BoardLocation = from.try_into().map_err(|_| MovementError::SourceOutOfBounds)?;
+        let board_to: BoardLocation = to.try_into().map_err(|_| MovementError::DestinationOutOfBounds)?;
 
-        let piece = match opt_piece {
+        let located_from = LocatedPiece {
+            location: board_from,
+            opt_piece: self.get_piece(board_from),
+        };
+        let located_to = LocatedPiece {
+            location: board_to,
+            opt_piece: self.get_piece(board_to),
+        };
+
+        let moving_piece = match located_from.opt_piece {
             Some(piece) => piece,
             None => return Err(MovementError::SourcePieceNotFound)
         };
 
-        let can_move = piece.can_move(board_from, board_to, self);
-        if can_move
+        let mut result: MovementResult = MovementResult::FailedToMove;
+        if (self.ignore_ownership || moving_piece.get_owner() == self.playing_player_type) && moving_piece.can_move(&located_from, &located_to, self)
         {
+            let is_moving_piece_upgradable = moving_piece.is_upgradeable_piece();
+            let is_game_ending = located_to.opt_piece.is_some_and(|piece| piece.is_game_ending_piece());
+
+            if let Some(consumed_piece) = located_to.opt_piece {
+                self.track_consumed_piece(consumed_piece.get_owner(), consumed_piece.get_type());
+            }
+
+            result = if is_game_ending
+            {
+                MovementResult::GameFinished
+            }
+            else if is_moving_piece_upgradable && Board::is_upgrade_row(board_to.get_row(), self.playing_player_type)
+            {
+                MovementResult::PawnUpgrade
+            }
+            else
+            {
+                self.playing_player_type.flip();
+                MovementResult::Moved
+            };
+
             self.table[board_to.get_row()][board_to.get_col()] = self.table[board_from.get_row()][board_from.get_col()].take();
         }
-        Ok(can_move)
+        Ok(result)
+    }
+
+    pub fn upgrade_pawn(&mut self, pawn_loc: Location, target_type: PieceType) -> Result<(), MovementError>
+    {
+        let board_loc: BoardLocation = match pawn_loc.try_into() {
+            Ok(new_loc) => new_loc,
+            Err(_) => { return Err(MovementError::SourceOutOfBounds); }
+        };
+
+        //Consume the piece
+        *self.consumed_piece_types.entry(self.playing_player_type).or_default().entry(target_type).or_insert(1) -= 1;
+
+        self.table[board_loc.get_row()][board_loc.get_col()] = Some(Piece::make(target_type, self.playing_player_type));
+        self.playing_player_type.flip();
+        Ok(())
+    }
+
+    pub fn get_consumed_piece_types(&self, owner: PieceOwnerType) -> &HashMap<PieceType, u8>
+    {
+        &self.consumed_piece_types[&owner]
     }
 
     pub fn get_piece(&self, loc : BoardLocation) -> Option<&Piece>
     {
         self.table[loc.get_row()][loc.get_col()].as_ref()
+    }
+
+    pub fn get_playing_player(&self) -> PieceOwnerType
+    {
+        self.playing_player_type
     }
 
     pub fn has_piece_straight(&self, start : BoardLocation, dest : BoardLocation) -> bool
@@ -202,12 +268,30 @@ impl Board
         row == 1
     }
 
+    pub fn is_upgrade_row(row : usize, owner : PieceOwnerType) -> bool
+    {
+        if owner == PieceOwnerType::Black
+        {
+            return row == (BOARD_SIZE_US - 1);
+        }
+        row == 0
+    }
+
+    fn track_consumed_piece(&mut self, owner: PieceOwnerType, piece_type: PieceType)
+    {
+        //Find or insert an empty map for the player type
+        let cur_map = self.consumed_piece_types.entry(owner).or_default();
+        //Find and increment by 1 or insert a 1 to the piece tracking
+        *cur_map.entry(piece_type).or_insert(0) += 1;
+    }
+
 }
 
 impl fmt::Display for Board
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result
     {
+        writeln!(f, "Is the {} players turn!", self.playing_player_type)?;
         for (row_idx, row) in self.table.iter().enumerate()
         {
             write!(f, "{} ", BOARD_SIZE_US - row_idx)?;
@@ -234,9 +318,7 @@ impl fmt::Display for Board
 #[cfg(test)]
 mod tests
 {
-    use crate::game::board::{piece::{Piece, PieceOwnerType}, Location};
-
-    use super::Board;
+    use super::{Board, MovementResult, PieceType, Piece, PieceOwnerType, Location};
 
     struct BoardTester
     {
@@ -245,9 +327,9 @@ mod tests
 
     impl BoardTester
     {
-        pub fn create() -> Self
+        pub fn create(ignore_ownership : bool) -> Self
         {
-            Self{board: Board::create_empty()}
+            Self{board: Board::create_empty(ignore_ownership)}
         }
 
         pub fn try_move(&mut self, from_str: &str, to_str: &str) -> bool
@@ -257,7 +339,7 @@ mod tests
             let mut moved = false;
 
             match self.board.try_move(from, to) {
-                Ok(has_moved) => { moved = has_moved },
+                Ok(move_result) => { moved = move_result == MovementResult::Moved },
                 Err(move_error) => assert!(false, "Failed to move piece from {from_str} to {to_str}. {:?}", move_error)
             };
             moved
@@ -272,32 +354,32 @@ mod tests
 
         pub fn add_pawn(&mut self, loc_str: &str, owner: PieceOwnerType)
         {
-            self.add_piece(loc_str, Piece::make_pawn(owner));
+            self.add_piece(loc_str, Piece::make(PieceType::Pawn, owner));
         }
 
         pub fn add_rook(&mut self, loc_str: &str, owner: PieceOwnerType)
         {
-            self.add_piece(loc_str, Piece::make_rook(owner));
+            self.add_piece(loc_str, Piece::make(PieceType::Rook, owner));
         }
 
         pub fn add_knight(&mut self, loc_str: &str, owner: PieceOwnerType)
         {
-            self.add_piece(loc_str, Piece::make_knight(owner));
+            self.add_piece(loc_str, Piece::make(PieceType::Knight, owner));
         }
 
         pub fn add_bishop(&mut self, loc_str: &str, owner: PieceOwnerType)
         {
-            self.add_piece(loc_str, Piece::make_bishop(owner));
+            self.add_piece(loc_str, Piece::make(PieceType::Bishop, owner));
         }
 
         pub fn add_queen(&mut self, loc_str: &str, owner: PieceOwnerType)
         {
-            self.add_piece(loc_str, Piece::make_queen(owner));
+            self.add_piece(loc_str, Piece::make(PieceType::Queen, owner));
         }
 
         pub fn add_king(&mut self, loc_str: &str, owner: PieceOwnerType)
         {
-            self.add_piece(loc_str, Piece::make_king(owner));
+            self.add_piece(loc_str, Piece::make(PieceType::King, owner));
         }
 
         fn add_piece(&mut self, loc_str: &str, piece: Piece)
@@ -315,7 +397,7 @@ mod tests
     #[test]
     fn board_tracks_movement()
     {
-        let mut board = BoardTester::create();
+        let mut board = BoardTester::create(true);
 
         board.add_pawn("2a", PieceOwnerType::White);
 
@@ -330,7 +412,7 @@ mod tests
     #[test]
     fn pawn_movement_white()
     {
-        let mut board = BoardTester::create();
+        let mut board = BoardTester::create(true);
 
         board.add_pawn("2a", PieceOwnerType::White);
         assert!(board.try_move("2a", "3a"), "Failed to move pawn forward");
@@ -356,7 +438,7 @@ mod tests
     #[test]
     fn pawn_movement_black()
     {
-        let mut board = BoardTester::create();
+        let mut board = BoardTester::create(true);
 
         board.add_pawn("7a", PieceOwnerType::Black);
         assert!(board.try_move("7a", "6a"), "Failed to move pawn forward");
@@ -389,14 +471,14 @@ mod tests
         //Enemy joins the battle
         board.add_pawn("3a", PieceOwnerType::Black);
 
-        assert!(!board.try_move("1a", "7a"), "A {piece_name} shouldn't we able to move accross pieces");
+        assert!(!board.try_move("1a", "7a"), "A {piece_name} shouldn't we able to move across pieces");
         assert!(board.try_move("1a", "3a"), "A {piece_name} should be able to eat enemy pieces");
     }
 
     #[test]
     fn rook_movement()
     {
-        let mut board = BoardTester::create();
+        let mut board = BoardTester::create(true);
         board.add_rook("1a", PieceOwnerType::White);
         rook_movement_helper(&mut board, "rook");
     }
@@ -404,7 +486,7 @@ mod tests
     #[test]
     fn knight_movement()
     {
-        let mut board = BoardTester::create();
+        let mut board = BoardTester::create(true);
         board.add_knight("3d", PieceOwnerType::White);
 
         assert!(board.try_move("3d", "5c"), "Failed to move knight in L shape upup left");
@@ -437,7 +519,7 @@ mod tests
     #[test]
     fn bishop_movement()
     {
-        let mut board = BoardTester::create();
+        let mut board = BoardTester::create(true);
         board.add_bishop("1c", PieceOwnerType::White);
         bishop_movement_helper(&mut board, "bishop");
     }
@@ -445,11 +527,11 @@ mod tests
     #[test]
     fn queen_movement()
     {
-        let mut board = BoardTester::create();
+        let mut board = BoardTester::create(true);
         board.add_queen("1c", PieceOwnerType::White);
         bishop_movement_helper(&mut board, "queen");
 
-        board = BoardTester::create();
+        board = BoardTester::create(true);
         board.add_queen("1a", PieceOwnerType::White);
         rook_movement_helper(&mut board, "queen");
     }
@@ -457,7 +539,7 @@ mod tests
     #[test]
     fn king_movement()
     {
-        let mut board = BoardTester::create();
+        let mut board = BoardTester::create(true);
         board.add_king("2d", PieceOwnerType::White);
     
         //Straight

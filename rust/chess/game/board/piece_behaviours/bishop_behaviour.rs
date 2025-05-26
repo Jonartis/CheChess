@@ -23,12 +23,17 @@ impl BishopBehaviour
 
 impl PieceBehaviour for BishopBehaviour
 {
-    fn can_move(&self, from : LocatedPiece, to : LocatedPiece, board: &Board) -> bool
+    fn can_move(&self, from : &LocatedPiece, to : &LocatedPiece, board: &Board) -> bool
     {
-        BishopBehaviour::can_move_as_bishop(&from, &to, board)
+        BishopBehaviour::can_move_as_bishop(from, to, board)
     }
 
-    fn board_display(&self, owner : PieceOwnerType) -> &'static str
+    fn get_type(&self) -> PieceType
+    {
+        PieceType::Bishop
+    }
+
+    fn to_board_string(&self, owner : PieceOwnerType) -> &'static str
     {
         if owner == PieceOwnerType::Black { "b" } else { "B" }
     }
